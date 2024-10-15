@@ -1,0 +1,141 @@
+* {
+    font-family: Inter, sans-serif;
+    letter-spacing: 2px;
+    overflow: hidden;
+}
+body {
+    overflow: hidden;
+    margin: 0;
+    height: 100%;
+    background-color: #EBDECB;
+}
+
+.button_back {
+    position: fixed;
+    top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 3%;
+    background-color: black;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+.button_back img {
+    width: 55%;
+    height: 40px;
+}
+
+header {
+    margin-top: 10px;
+    width: 80%;
+    margin-left: 10%;
+    text-align: center;
+}
+header h1 {
+    font-size: 20px;
+}
+header img {
+    width: 35%;
+    height: 50%;
+    object-fit: fill;
+    border-radius: 50%;
+}
+
+main {
+    text-align: center;
+    margin-top: 20px;
+}
+main .menu {
+    width: 90%;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    margin-left: 5%;
+}
+main .menu .order_history {
+    width: 90%;
+    height: auto;
+    background-color: black;
+    margin-left: 5%;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    color: #EBDECB;
+}
+main .menu .order_history .title_info {
+    margin-top: 10px;
+    margin-left: 10px;
+    font-size: 14px;
+}
+main .menu .order_history .title_info .gray {
+    font-size: 12px;
+    color: gray;
+}
+main .menu .order_history .address {
+    float: left;
+    font-size: 10px;
+    margin-left: 5%;
+    color: gray;
+}
+main .menu .order_history .list_dishes {
+    margin-top: 10px;
+    width: 90%;
+    margin-left: 5%;
+    margin-bottom: 10px;
+    height: 45px;
+    overflow-x: auto;
+    display: flex;
+    align-items: center;
+}
+main .menu .order_history .list_dishes img {
+    height: 45px;
+    width: auto;
+    object-fit: cover;
+    margin: 5px;
+    flex-shrink: 0;
+}
+main .menu .order_history .footer_info {
+    width: 90%;
+    margin-left: 5%;
+}
+main .menu .order_history .footer_info span{
+    display: inline-block;
+}
+main .menu .order_history .footer_info .left {
+    font-size: 12px;
+    float: left;
+}
+main .menu .order_history .footer_info .right {
+    font-size: 12px;
+    float: right;
+}
+
+footer {
+    position: fixed;
+    bottom: -30px;
+    width: 100%;
+    height: 100px;
+    border-radius: 20px 20px 0 0;
+    background-color: #303030;
+    padding: 10px 0;
+    text-align: center;
+}
+footer nav {
+    display: flex;
+    justify-content: space-around;
+    padding: 0 10px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+footer .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #EBDECB;
+    text-decoration: none;
+}
+footer .nav-item img {
+    width: 35px;
+    height: 25px;
+}

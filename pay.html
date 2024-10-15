@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORUCHI - Оплата</title>
+    <link rel="stylesheet" href="../static/styles/styles_pay.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.6/jquery.inputmask.min.js"></script>
+</head>
+<body>
+    <a href="cart.html" class="button_back" id="back_button"><img src="../static/svg/icon_arrow.svg" alt="Назад"></a>
+    <header>
+        <h1>ОПЛАТА</h1>
+    </header>
+
+    <main>
+        <div class="address_info">
+            <span>КУДА ДОСТАВИТЬ?</span>
+            <div class="input_area">
+                <textarea id="street" rows="1" placeholder="УЛИЦА"></textarea>
+                <textarea id="house" rows="1" class="min_textarea" placeholder="ДОМ"></textarea>
+                <textarea id="flat" rows="1" class="min_textarea" placeholder="КВАРТИРА"></textarea>
+                <textarea id="entrance" rows="1" class="min_textarea" placeholder="ПОДЪЕЗД"></textarea>
+                <textarea id="floor" rows="1" class="min_textarea" placeholder="ЭТАЖ"></textarea>
+                <textarea id="code" rows="1" class="min_textarea" placeholder="КОД"></textarea>
+                <textarea id="phone" rows="1" class="min_textarea" placeholder="ТЕЛЕФОН"></textarea>
+                <textarea id="comment" rows="1" placeholder="КОММЕНТАРИЙ"></textarea>
+                <br>
+                <span>10-20 мин</span>
+            </div>
+        </div>
+        <div class="next_menu">
+            <button class="info_time_price" id="total-price-button">0₽</button>
+            <button class="order_button" id="order-button">К оплате</button>
+        </div>
+    </main>
+
+    <div id="overlay" style="display: none;"></div>
+    <div id="payment-form" style="display: none;"></div>
+
+    <footer>
+        <nav>
+            <a href="index.html" class="nav-item">
+                <img src="../static/svg/icon_home_inactive.svg" alt="Домой">
+            </a>
+            <a href="cart.html" class="nav-item">
+                <img src="../static/svg/icon_cart.svg" alt="Корзина">
+            </a>
+            <a href="profile.html" class="nav-item">
+                <img src="../static/svg/icon_profile_inactive.svg" alt="Профиль">
+            </a>
+        </nav>
+    </footer>
+
+    <script src="https://yookassa.ru/checkout-widget/v1/checkout-widget.js"></script>
+
+    <script>
+        function reloadStylesheets() {
+            const queryString = '?reload=' + new Date().getTime();
+            const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            stylesheets.forEach(function(stylesheet) {
+                stylesheet.href = stylesheet.href.split('?')[0] + queryString;
+            });
+        }
+
+        $(document).ready(function(){
+            $('#phone').inputmask("+7 (999) 999 99 99"); // Установите нужный формат маски
+        });
+
+        reloadStylesheets();
+
+        function getUserId() {
+            const user = window.Telegram.WebApp.initDataUnsafe.user;
+            return user ? user.id : null;
+        }
+
+        async function updateTotalPrice() {
+            const userId = getUserId();
+            if (!userId) {
+                alert('Не удалось получить ID пользователя');
+                return;
+            }
+
+            const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/cart`);
+            const cartItems = await response.json();
+            let totalOrderPrice = 0;
+
+            if (cartItems.length > 0) {
+                cartItems.forEach(item => {
+                    totalOrderPrice += item.price * item.quantity;
+                });
+            }
+
+            // Теперь добавляем стоимость доставки
+            const maxDeliveryPrice = await getMaxDeliveryPrice(cartItems);
+            totalOrderPrice += maxDeliveryPrice;
+
+            // Отображаем итоговую сумму
+            document.getElementById('total-price-button').textContent = `${totalOrderPrice}₽`;
+        }
+
+        async function getMaxDeliveryPrice(cartItems) {
+            let maxDeliveryPrice = 0;
+            const restaurantIds = new Set(); // Собираем уникальные ID ресторанов
+
+            // Собираем уникальные ID ресторанов
+            cartItems.forEach(item => {
+                restaurantIds.add(item.restaurant_id);
+            });
+
+            // Запрашиваем стоимость доставки для каждого уникального ресторана
+            const restaurantDeliveryPromises = Array.from(restaurantIds).map(restaurant_id =>
+                getDeliveryPriceForRestaurant(restaurant_id)
+            );
+
+            // Ждём, пока все запросы завершатся
+            const deliveryPrices = await Promise.all(restaurantDeliveryPromises);
+
+            // Ищем максимальную стоимость доставки
+            maxDeliveryPrice = Math.max(...deliveryPrices);
+
+            return maxDeliveryPrice;
+        }
+        async function getDeliveryPriceForRestaurant(restaurant_id) {
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/restaurants/${restaurant_id}/`);
+                const data = await response.json();
+                return parseFloat(data.delivery) || 0;
+            } catch (error) {
+                console.error(`Ошибка при получении стоимости доставки для ресторана ${restaurant_id}:`, error);
+                return 0;
+            }
+        }
+
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const formElements = Array.from(document.querySelectorAll('.input_area textarea'));
+                const currentIndex = formElements.indexOf(event.target);
+                const nextElement = formElements[currentIndex + 1];
+
+                if (nextElement) {
+                    nextElement.focus();
+                } else {
+                    event.target.blur();
+                }
+            }
+        }
+
+        document.querySelectorAll('.input_area textarea').forEach(textarea => {
+            textarea.addEventListener('keydown', handleEnterKey);
+        });
+        async function changeTextareaValue() {
+            const userId = getUserId();
+            const address_street = document.getElementById('street');
+            const address_house = document.getElementById('house');
+            const address_flat = document.getElementById('flat');
+            const address_entrance = document.getElementById('entrance');
+            const address_floor = document.getElementById('floor');
+            const address_code = document.getElementById('code');
+            const address_phone = document.getElementById('phone');
+            const address_comm = document.getElementById('comment');
+
+            const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/address/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            address_street.value = data[0];
+            address_house.value = data[1];
+            address_flat.value = data[2];
+            address_entrance.value = data[3];
+            address_floor.value = data[4];
+            address_code.value = data[5];
+            address_phone.value = data[6];
+            address_comm.value = data[7];
+        }
+
+        changeTextareaValue();
+
+        document.getElementById('order-button').addEventListener('click', async message => {
+            const userId = getUserId();
+            if (!userId) {
+                alert('Не удалось получить ID пользователя');
+                return;
+            }
+            const address_street = document.getElementById('street').value;
+            const address_house = document.getElementById('house').value;
+            const address_flat = document.getElementById('flat').value;
+            const address_entrance = document.getElementById('entrance').value;
+            const address_floor = document.getElementById('floor').value;
+            const address_code = document.getElementById('code').value;
+            const address_phone = document.getElementById('phone').value;
+            let address_comm = document.getElementById('comment').value;
+            if (address_street === '' || address_house === '' || address_flat === '' || address_entrance === '' || address_floor === '' || address_code === '' || address_phone === '') {
+                alert('Заполните все поля. Поле с комментарием можно оставить пустым')
+                return;
+            }
+            if (address_comm === '') {
+                address_comm = '-';
+            }
+            const response0 = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/address_set/${address_street}/${address_house}/${address_flat}/${address_entrance}/${address_floor}/${address_code}/${address_phone}/${address_comm}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/create-payment/?user_id=${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const paymentData = await response.json();
+
+                if (paymentData.status === 'success') {
+                     window.location.href = `history.html`;
+                } else {
+                    alert('Ошибка при оплате. Убедитесь, что у Вас достаточно средств на балансе бота.');
+                }
+            } catch (error) {
+                alert(`Ошибка при создании платежа: ${error.message || error}`);
+                console.error('Детали ошибки:', error); // Вывод ошибки в консоль для дополнительной информации
+            }
+        });
+        document.getElementById('overlay').onclick = function() {
+            this.style.display = 'none'; // скрываем затемнение
+            document.getElementById('payment-form').style.display = 'none'; // скрываем панель
+        };
+
+        updateTotalPrice();
+    </script>
+</body>
+</html>

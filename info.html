@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORUCHI - Доставка</title>
+    <link rel="stylesheet" href="../static/styles/styles_info.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.6/jquery.inputmask.min.js"></script>
+</head>
+<body>
+    <a href="profile.html" class="button_back"><img src="../static/svg/icon_arrow.svg" alt=""></a>
+    <header>
+        <h1>МОИ ДАННЫЕ</h1>
+    </header>
+
+    <main>
+        <div class="address_info">
+            <span>Укажите Ваш адрес</span>
+            <div class="input_area">
+                <textarea id="street" rows="1" placeholder="УЛИЦА"></textarea>
+                <textarea id="house" rows="1" class="min_textarea" placeholder="ДОМ"></textarea>
+                <textarea id="flat" rows="1" class="min_textarea" placeholder="КВАРТИРА"></textarea>
+                <textarea id="entrance" rows="1" class="min_textarea" placeholder="ПОДЪЕЗД"></textarea>
+                <textarea id="floor" rows="1" class="min_textarea" placeholder="ЭТАЖ"></textarea>
+                <textarea id="code" rows="1" class="min_textarea" placeholder="КОД"></textarea>
+                <textarea id="phone" rows="1" class="min_textarea" placeholder="ТЕЛЕФОН"></textarea>
+                <textarea id="comment" rows="1" placeholder="КОММЕНТАРИЙ"></textarea>
+            </div>
+        </div>
+
+        <div class="next_menu">
+            <button class="order_button" id="order-button">Сохранить</button>
+        </div>
+    </main>
+
+    <footer>
+        <nav>
+            <a href="index.html" class="nav-item">
+                <img src="../static/svg/icon_home_inactive.svg" alt="">
+            </a>
+            <a href="cart.html" class="nav-item">
+                <img src="../static/svg/icon_cart_inactive.svg" alt="">
+            </a>
+            <a href="profile.html" class="nav-item">
+                <img src="../static/svg/icon_person.svg" alt="">
+            </a>
+        </nav>
+    </footer>
+
+    <script>
+        function reloadStylesheets() {
+            var queryString = '?reload=' + new Date().getTime();
+            var stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            stylesheets.forEach(function(stylesheet) {
+                stylesheet.href = stylesheet.href.split('?')[0] + queryString;
+            });
+        }
+        reloadStylesheets();
+
+        $(document).ready(function(){
+            $('#phone').inputmask("+7 (999) 999 99 99"); // Установите нужный формат маски
+        });
+
+        function getUserId() {
+            const user = window.Telegram.WebApp.initDataUnsafe.user;
+            return user ? user.id : null;
+        }
+
+        async function changeTextareaValue() {
+            const userId = getUserId();
+            const address_street = document.getElementById('street');
+            const address_house = document.getElementById('house');
+            const address_flat = document.getElementById('flat');
+            const address_entrance = document.getElementById('entrance');
+            const address_floor = document.getElementById('floor');
+            const address_code = document.getElementById('code');
+            const address_phone = document.getElementById('phone');
+            const address_comm = document.getElementById('comment');
+
+            const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/address/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            address_street.value = data[0];
+            address_house.value = data[1];
+            address_flat.value = data[2];
+            address_entrance.value = data[3];
+            address_floor.value = data[4];
+            address_code.value = data[5];
+            address_phone.value = data[6];
+            address_comm.value = data[7];
+        }
+
+        changeTextareaValue();
+
+        document.getElementById('order-button').addEventListener('click', async () => {
+            const userId = getUserId();
+            if (!userId) {
+                alert('Не удалось получить ID пользователя');
+                return;
+            }
+            const address_street = document.getElementById('street').value;
+            const address_house = document.getElementById('house').value;
+            const address_flat = document.getElementById('flat').value;
+            const address_entrance = document.getElementById('entrance').value;
+            const address_floor = document.getElementById('floor').value;
+            const address_code = document.getElementById('code').value;
+            const address_phone = document.getElementById('phone').value;
+            let address_comm = document.getElementById('comment').value;
+            if (address_comm === '') {
+                address_comm = '-';
+            }
+            const response0 = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/address_set/${address_street}/${address_house}/${address_flat}/${address_entrance}/${address_floor}/${address_code}/${address_phone}/${address_comm}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            alert('Данные успешно сохранены');
+        });
+    </script>
+</body>
+</html>

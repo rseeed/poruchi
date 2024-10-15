@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORUCHI - Доставка</title>
+    <link rel="stylesheet" href="../static/styles/styles_promo.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+</head>
+<body>
+    <a href="profile.html" class="button_back"><img src="../static/svg/icon_arrow.svg" alt=""></a>
+    <header>
+        <h1>МОИ ПРОМОКОДЫ</h1>
+    </header>
+
+    <main>
+        <div class="menu">
+
+            <h3>Здесь отображаются Ваши промокоды...</h3>
+
+        </div>
+    </main>
+
+    <footer>
+        <nav>
+            <a href="index.html" class="nav-item">
+                <img src="../static/svg/icon_home_inactive.svg" alt="">
+            </a>
+            <a href="cart.html" class="nav-item">
+                <img src="../static/svg/icon_cart_inactive.svg" alt="">
+            </a>
+            <a href="profile.html" class="nav-item">
+                <img src="../static/svg/icon_person.svg" alt="">
+            </a>
+        </nav>
+    </footer>
+    <script>
+        function reloadStylesheets() {
+            var queryString = '?reload=' + new Date().getTime();
+            var stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            stylesheets.forEach(function(stylesheet) {
+                stylesheet.href = stylesheet.href.split('?')[0] + queryString;
+            });
+        }
+
+        reloadStylesheets();
+    </script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORUCHI - Доставка</title>
+    <link rel="stylesheet" href="../static/styles/styles_dish.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+</head>
+<body>
+    <a href="#" class="button_back" id="back_button"><img src="../static/svg/icon_arrow.svg" alt=""></a>
+
+    <main>
+        <h3 id="category-title">...</h3>
+        <div class="dishes" id="dishes_container"></div>
+    </main>
+
+    <footer>
+        <nav>
+            <a href="index.html" class="nav-item">
+                <img src="../static/svg/icon_home.svg" alt="">
+            </a>
+            <a href="cart.html" class="nav-item">
+                <img src="../static/svg/icon_cart_inactive.svg" alt="">
+            </a>
+            <a href="profile.html" class="nav-item">
+                <img src="../static/svg/icon_profile_inactive.svg" alt="">
+            </a>
+        </nav>
+    </footer>
+
+    <div id='dish-modal' class='modal_window'>
+        <div class="modal_content">
+            <h3 id="dish-name">Название блюда</h3>
+            <button id="close-modal" class="close-modal">&times;</button>
+            <img id="dish-image" src="" alt="Изображение блюда">
+            <div class="info_dish">
+                <span id="dish-price" class="dish-price">Цена: 0₽ <span id="dish-black" class="black">0г</span></span>
+                <span id="dish-description" class="dish-description">Описание: ...</span>
+                <span id="dish-structure" class="dish-structure">Состав: ...</span>
+                <div id="dish-ingredients" class="dish_ingredients"></div>
+            </div>
+            <button id="add-to-cart" class="add_to_cart">В корзину</button>
+        </div>
+    </div>
+
+    <script>
+        window.Telegram.WebApp.ready();
+        function reloadStylesheets() {
+            var queryString = '?reload=' + new Date().getTime();
+            var stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            stylesheets.forEach(function(stylesheet) {
+                stylesheet.href = stylesheet.href.split('?')[0] + queryString;
+            });
+        }
+
+        reloadStylesheets();
+        function updateModalQuantity(dish) {
+            const minusButton = document.getElementById('modal-minus-button');
+            const plusButton = document.getElementById('modal-plus-button');
+            const quantityNumber = document.getElementById('modal-quantity-number');
+
+            let quantity = parseInt(quantityNumber.textContent);
+
+            // Обработчик для кнопки уменьшения
+            minusButton.onclick = async function () {
+                if (quantity > 1) {
+                    quantity--;
+                    quantityNumber.textContent = quantity;
+                    await addToCart(dish, dish.price, [], false, false); // Обновляем количество на сервере
+                } else {
+                    await addToCart(dish, dish.price, [], false, false); // Удаляем товар
+                    restoreAddButton(dish); // Восстанавливаем кнопку "Добавить"
+                    closeModal(); // Закрываем модальное окно
+                }
+            };
+
+            // Обработчик для кнопки увеличения
+            plusButton.onclick = async function () {
+                quantity++;
+                quantityNumber.textContent = quantity;
+                await addToCart(dish, dish.price, [], false); // Обновляем количество на сервере
+            };
+        }
+        document.getElementById('close-modal').onclick = function () {
+            closeModal();
+        };
+        function getQueryParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                id: urlParams.get('id'),
+                category: urlParams.get('category')
+            };
+        }
+
+        function setBackButton() {
+            const { id } = getQueryParams();
+            const backButton = document.getElementById('back_button');
+            backButton.href = `restaurant.html?id=${id}`;
+        }
+        async function loadCart() {
+            const userId = getUserId();
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/cart`);
+                if (response.ok) {
+                    return await response.json();
+                } else {
+                    console.error("Ошибка при получении корзины");
+                    return [];
+                }
+            } catch (error) {
+                console.error("Ошибка при получении корзины:", error);
+                return [];
+            }
+        }
+        function findDishInCart(cart, dishId) {
+            return cart.find(item => item.dish_id === dishId);
+        }
+        async function loadDishes() {
+            const { id, category } = getQueryParams();
+            const dishesContainer = document.getElementById('dishes_container');
+            dishesContainer.innerHTML = '';
+
+            // Загружаем корзину пользователя
+            const userCart = await loadCart();
+
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/restaurants/${id}/dishes/`);
+                const dishes = await response.json();
+
+                const filteredDishes = dishes.filter(dish => dish.category === category);
+                if (filteredDishes.length > 0) {
+                    document.getElementById('category-title').textContent = category;
+
+                    filteredDishes.forEach(dish => {
+                        const dishItem = document.createElement('div');
+                        dishItem.className = 'cards_dish';
+
+                        dishItem.addEventListener('click', (event) => {
+                            const modal = document.getElementById('dish-modal');
+                            if (modal.style.display === 'block') {
+                                return;
+                            }
+                            if (event.target.classList.contains('cards_dish_button')) {
+                                const dishPriceElement = event.target.parentElement.querySelector('.cards_dish_price');
+                                addToCart(dish, dish.price);
+                            }
+                            else if (event.target.classList.contains('quantity-button')) {
+                                return 0;
+                            } else {
+                                openModal(dish);
+                            }
+                        });
+
+                        const dishName = document.createElement('span');
+                        dishName.className = 'cards_dish_name';
+                        dishName.textContent = dish.title;
+
+                        const br = document.createElement('br');
+                        const dishImage = document.createElement('img');
+                        dishImage.src = `../../${dish.logo_path}`;
+                        dishImage.alt = dish.title;
+
+                        const dishPrice = document.createElement('span');
+                        dishPrice.className = 'cards_dish_price';
+                        dishPrice.innerHTML = `${dish.price} ₽ <span>${dish.weight}г</span>`;
+
+                        // Создаем кнопку
+                        const selectButton = document.createElement('button');
+                        selectButton.className = 'cards_dish_button';
+                        selectButton.textContent = '+';
+                        selectButton.setAttribute('data-dish-id', dish.id);
+
+                        dishItem.appendChild(dishImage);
+                        dishItem.appendChild(dishName);
+                        dishItem.appendChild(br);
+                        dishItem.appendChild(dishPrice);
+
+                        // Проверяем, находится ли блюдо в корзине пользователя
+                        const cartItem = findDishInCart(userCart, dish.id);
+                        if (cartItem) {
+                            replaceAddButtonWithQuantityControl(dish, cartItem.quantity); // Показываем контролы количества
+                        } else {
+                            dishItem.appendChild(selectButton); // Добавляем кнопку, если блюда нет в корзине
+                        }
+
+                        dishesContainer.appendChild(dishItem);
+                    });
+                } else {
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = 'Блюда не найдены для данной категории.';
+                    dishesContainer.appendChild(errorMsg);
+                }
+            } catch (error) {
+                console.error("Ошибка при получении данных:", error);
+                const errorMsg = document.createElement('p');
+                errorMsg.textContent = 'Ошибка при загрузке блюд.';
+                dishesContainer.appendChild(errorMsg);
+            }
+        }
+
+        function getUserId() {
+            const user = window.Telegram.WebApp.initDataUnsafe.user;
+            return 802421217;
+        }
+
+        async function addToCart(dish, priceElement, selectedIngredients = [], status=true, type=true) {
+            const userId = getUserId();
+
+            const cartItem = {
+                dish_id: dish.id,
+                name: dish.title,
+                price: parseFloat(priceElement),
+                weight: dish.weight,
+                restaurant_id: dish.restaurant_id,
+                quantity: 1,
+                paid_ingredients: selectedIngredients.map(ingredient => ({
+                    name: ingredient.name,
+                    price: ingredient.price
+                })),
+                logo_path: dish.logo_path
+            };
+            if (status){
+                replaceAddButtonWithQuantityControl(dish);
+            }
+            try {
+                if (type){
+                    const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/cart`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(cartItem),
+                    });
+
+                    if (response.ok) {
+                        console.log('Товар добавлен в корзину');
+                    } else {
+                        console.error('Ошибка при добавлении товара в корзину');
+                    }
+                }
+                else {
+                    const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/cart/delete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(cartItem),
+                    });
+
+                    if (response.ok) {
+                        console.log('Товар удален из корзины');
+                    } else {
+                        console.error('Ошибка при удалении товара в корзину');
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка при добавлении товара в корзину:', error);
+            }
+        }
+
+        // Замена кнопки "Добавить" на количество и кнопки "-" и "+"
+        function replaceAddButtonWithQuantityControl(dish, quantity = 1) {
+            const dishItem = document.querySelector(`.cards_dish_button[data-dish-id="${dish.id}"]`).parentElement;
+
+            const quantityControl = document.createElement('div');
+            quantityControl.className = 'quantity-control';
+            quantityControl.setAttribute('data-dish-id', dish.id); // Уникальный идентификатор для каждого блюда
+
+            const minusButton = document.createElement('button');
+            minusButton.className = 'quantity-button';
+            minusButton.textContent = '-';
+            minusButton.onclick = function() {
+                decreaseQuantity(dish);
+            };
+
+            const quantityNumber = document.createElement('span');
+            quantityNumber.className = 'quantity-number';
+            quantityNumber.textContent = quantity; // Установить количество из корзины
+            quantityNumber.setAttribute('data-dish-id', dish.id); // Добавляем идентификатор для удобного доступа
+
+            const plusButton = document.createElement('button');
+            plusButton.className = 'quantity-button';
+            plusButton.textContent = '+';
+            plusButton.onclick = function() {
+                increaseQuantity(dish);
+            };
+
+            quantityControl.appendChild(minusButton);
+            quantityControl.appendChild(quantityNumber);
+            quantityControl.appendChild(plusButton);
+
+            // Заменяем кнопку "Добавить" на контрол количества
+            const addButton = dishItem.querySelector('.cards_dish_button');
+            dishItem.replaceChild(quantityControl, addButton);
+        }
+
+
+        // Увеличение количества
+        async function increaseQuantity(dish) {
+            const dishItem = document.querySelector(`.quantity-control[data-dish-id="${dish.id}"]`);
+
+            if (!dishItem) {
+                console.error(`Элемент для увеличения количества не найден для блюда с id ${dish.id}`);
+                return;
+            }
+
+            const quantityControl = dishItem.querySelector('.quantity-number');
+
+            if (quantityControl) {
+                let quantity = parseInt(quantityControl.textContent);
+                quantity += 1;
+                quantityControl.textContent = quantity;
+
+                await addToCart(dish, dish.price, [], false);
+            } else {
+                console.error(`Элемент количества не найден для блюда с id ${dish.id}`);
+            }
+        }
+
+        function restoreAddButton(dish) {
+            const dishItem = document.querySelector(`.quantity-control[data-dish-id="${dish.id}"]`).parentElement;
+
+            const selectButton = document.createElement('button');
+            selectButton.className = 'cards_dish_button';
+            selectButton.textContent = '+';
+            selectButton.setAttribute('data-dish-id', dish.id);
+            selectButton.onclick = function() {
+                addToCart(dish, dish.price);
+            };
+
+            // Заменяем контрол количества на кнопку добавления
+            const quantityControl = dishItem.querySelector('.quantity-control');
+            dishItem.replaceChild(selectButton, quantityControl);
+        }
+
+        // Уменьшение количества
+        async function decreaseQuantity(dish) {
+            const dishItem = document.querySelector(`.quantity-control[data-dish-id="${dish.id}"]`);
+
+            if (!dishItem) {
+                console.error(`Элемент для увеличения количества не найден для блюда с id ${dish.id}`);
+                return;
+            }
+
+            const quantityControl = dishItem.querySelector('.quantity-number');
+
+            if (quantityControl) {
+                let quantity = parseInt(quantityControl.textContent);
+                if (quantity > 1) {
+                    quantity -= 1;
+                    quantityControl.textContent = quantity;
+
+                    // Обновляем количество в корзине
+                    await addToCart(dish, dish.price, [], false, false);
+                } else {
+                    // Если количество уменьшается до 0, удаляем контролы и возвращаем кнопку добавления
+                    await addToCart(dish, dish.price, [], false, false); // Удаляем товар из корзины
+                    restoreAddButton(dish); // Возвращаем кнопку добавления
+                }
+            } else {
+                console.error(`Элемент количества не найден для блюда с id ${dish.id}`);
+            }
+        }
+        function openModal(dish) {
+            document.getElementById('dish-name').textContent = dish.title;
+            document.getElementById('dish-image').src = `../../${dish.logo_path}`;
+            document.getElementById('dish-price').innerHTML = `${dish.price}₽ <span id="dish-black" class="black">${dish.weight}г</span>`;
+            document.getElementById('dish-description').textContent = `Описание: ${dish.composition || 'Описание не предоставлено'}`;
+            document.getElementById('dish-structure').textContent = `Состав: ${dish.composition}`;
+
+            const ingredientsContainer = document.getElementById('dish-ingredients');
+            ingredientsContainer.innerHTML = '';
+
+            let totalPrice = parseFloat(dish.price);
+            const selectedIngredients = [];
+
+            dish.paid_ingredients.forEach(ingredient => {
+                const ingredientItem = document.createElement('div');
+                ingredientItem.className = 'dish-ingredients-info';
+                ingredientItem.innerHTML = `
+                    <span class="dish-description-name">${ingredient.name} ${ingredient.price}₽</span>
+                    <button class="ingredient-button">+</button>
+                `;
+                ingredientItem.querySelector('.ingredient-button').addEventListener('click', function() {
+                    const button = this;
+                    const ingredientPrice = parseFloat(ingredient.price);
+                    if (button.textContent === '+') {
+                        button.textContent = '-';
+                        totalPrice += ingredientPrice;
+                        selectedIngredients.push(ingredient);
+                    } else {
+                        button.textContent = '+';
+                        totalPrice -= ingredientPrice;
+                        const index = selectedIngredients.findIndex(i => i.name === ingredient.name);
+                        if (index !== -1) selectedIngredients.splice(index, 1);
+                    }
+                    updatePrice(totalPrice, dish.weight);
+                });
+                ingredientsContainer.appendChild(ingredientItem);
+            });
+
+            document.getElementById('add-to-cart').onclick = function() {
+                addToCart(dish, dish.price, selectedIngredients);
+            };
+
+            document.getElementById('dish-modal').style.display = 'block';
+            document.getElementById('modal-backdrop').style.display = 'block';
+        }
+
+        function updatePrice(price, weight) {
+            document.getElementById('dish-price').innerHTML = `${price}₽ <span id="dish-black" class="black">${weight}г</span>`;
+        }
+
+        function closeModal() {
+            document.getElementById('dish-modal').style.display = 'none';
+        }
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('dish-modal');
+            const footer = document.querySelector('footer');
+            const modalContent = document.querySelector('.modal_content');
+            if (event.target === modal && !footer.contains(event.target) && !modalContent.contains(event.target)) {
+                closeModal();
+            }
+        });
+        window.addEventListener('touchstart', function(event) {
+            const modal = document.getElementById('dish-modal');
+            const modalContent = document.querySelector('.modal_content');
+
+            // Закрываем модальное окно, если кликнули вне его содержимого
+            if (event.target === modal || !modalContent.contains(event.target)) {
+                closeModal();
+            }
+        });
+
+        setBackButton();
+        loadDishes();
+    </script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,171 @@
+* {
+    font-family: Inter, sans-serif;
+    letter-spacing: 2px;
+    overflow: hidden;
+}
+::-webkit-input-placeholder {
+    font-weight: bold;
+}
+:-moz-placeholder {
+    font-weight: bold;
+}
+::-moz-placeholder {
+    font-weight: bold;
+}
+:-ms-input-placeholder {
+    font-weight: bold;
+}
+::-ms-input-placeholder {
+    font-weight: bold;
+}
+::placeholder {
+    font-weight: bold;
+}
+body {
+    overflow: hidden;
+    margin: 0;
+    height: 100%;
+    background-color: #EBDECB;
+}
+.button_back {
+    position: fixed;
+    top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 3%;
+    background-color: black;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+.button_back img {
+    width: 55%;
+    height: 40px;
+}
+header {
+    margin-top: 10px;
+    width: 80%;
+    margin-left: 10%;
+    text-align: center;
+}
+header h1 {
+    font-size: 20px;
+}
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* затемнение с прозрачностью */
+    z-index: 999; /* ниже панели оплаты */
+    display: none; /* изначально скрыт */
+}
+#payment-form {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* центрирует элемент */
+    z-index: 1000; /* выше затемняющего фона */
+    background: white; /* фон для панели */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* добавляет тень для улучшения видимости */
+    padding: 20px; /* отступы внутри панели */
+    border-radius: 25px; /* скругление углов */
+    width: 400px; /* или любая другая ширина */
+    height: auto; /* автоматически подстраивается по содержимому */
+    display: none; /* изначально скрыта */
+}
+
+main .address_info {
+    width: 80%;
+    height: 50%;
+    margin-left: 10%;
+    background-color: black;
+    text-align: center;
+    border-radius: 20px;
+    padding: 10px 0;
+    margin-top: 5%;
+}
+main .address_info span {
+    color: #EBDECB;
+    font-weight: bold;
+}
+main .address_info .input_area textarea {
+    text-align: center;
+    background-color: #EBDECB;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    width: 80%;
+    margin-top: 10px;
+    resize: none;
+}
+main .address_info .input_area .min_textarea{
+    width: 36%;
+    display: inline-block;
+}
+main .address_info .input_area span {
+    font-size: 12px;
+}
+main .next_menu {
+    text-align: center;
+    width: 100%;
+    height: 100px;
+    background-color: #EBDECB;
+    padding-top: 10px;
+}
+main .next_menu .info_time_price {
+    display: inline-block;
+    font-weight: bold;
+    border: none;
+    width: 30%;
+    height: 50px;
+    color: black;
+    background-color: #EBDECB;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+main .next_menu .order_button {
+    font-weight: bold;
+    border: none;
+    width: 30%;
+    height: 40px;
+    background-color: black;
+    border-radius: 20px;
+    color: #EBDECB;
+    font-size: 14px;
+}
+main .next_menu button:hover{
+    cursor: pointer;
+}
+
+footer {
+    position: fixed;
+    bottom: -30px;
+    width: 100%;
+    height: 100px;
+    border-radius: 20px 20px 0 0;
+    background-color: #303030;
+    padding: 10px 0;
+    text-align: center;
+}
+footer nav {
+    display: flex;
+    justify-content: space-around;
+    padding: 0 10px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+footer .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #EBDECB;
+    text-decoration: none;
+}
+footer .nav-item img {
+    width: 35px;
+    height: 25px;
+}

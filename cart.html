@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORUCHI - Корзина</title>
+    <link rel="stylesheet" href="../static/styles/styles_cart.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+</head>
+<body>
+    <header>
+        <h1>МОЯ КОРЗИНА</h1>
+    </header>
+
+    <main>
+        <div class="cart-items" id="cart-items-container"></div>
+        <div class="next_menu">
+            <button class="delivery-button" id="delivery-button" style="display: none;">Стоимость доставки: Считаем...</button>
+            <button class="info_time_price" id="total-time-button" style="display: none;">10-20 мин</button>
+            <button class="info_time_price" id="total-price-button" style="display: none;">0₽</button>
+            <button class="order-button" id="order-button" style="display: none;" onclick="goToPay()">К оплате</button>
+        </div>
+    </main>
+
+    <footer>
+        <nav>
+            <a href="index.html" class="nav-item">
+                <img src="../static/svg/icon_home_inactive.svg" alt="">
+            </a>
+            <a href="#" class="nav-item">
+                <img src="../static/svg/icon_cart.svg" alt="">
+            </a>
+            <a href="profile.html" class="nav-item">
+                <img src="../static/svg/icon_profile_inactive.svg" alt="">
+            </a>
+        </nav>
+    </footer>
+
+    <script>
+        function reloadStylesheets() {
+            var queryString = '?reload=' + new Date().getTime();
+            var stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            stylesheets.forEach(function(stylesheet) {
+                stylesheet.href = stylesheet.href.split('?')[0] + queryString;
+            });
+        }
+
+        reloadStylesheets();
+
+        function goToPay() {
+            window.location.href = 'pay.html';
+        }
+
+        function getUserId() {
+            const user = window.Telegram.WebApp.initDataUnsafe.user;
+            return user ? user.id : null;
+        }
+
+        async function getDeliveryPriceForRestaurant(restaurant_id) {
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/restaurants/${restaurant_id}/`);
+                const data = await response.json();
+                return parseFloat(data.delivery) || 0;
+            } catch (error) {
+                console.error(`Ошибка при получении стоимости доставки для ресторана ${restaurant_id}:`, error);
+                return 0;  // Если произошла ошибка, возвращаем 0
+            }
+        }
+
+        async function loadCartItems() {
+            const userId = getUserId();  // Предполагаем, что у нас есть ID пользователя
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/cart`);
+                const cartItems = await response.json();
+
+                const cartItemsContainer = document.getElementById('cart-items-container');
+                const orderTimeButton = document.getElementById('total-time-button');
+                const orderPriceButton = document.getElementById('total-price-button');
+                const deliveryButton = document.getElementById('delivery-button');
+                const orderButton = document.getElementById('order-button');
+                cartItemsContainer.innerHTML = '';
+
+                let totalOrderPrice = 0;
+                let maxDeliveryPrice = 0;  // Максимальная стоимость доставки
+
+                // Собираем уникальные ID ресторанов
+                const restaurantIds = new Set();
+                cartItems.forEach(item => {
+                    restaurantIds.add(item.restaurant_id);
+                });
+
+                // Запрашиваем стоимость доставки только для уникальных ресторанов
+                const restaurantDeliveryPromises = Array.from(restaurantIds).map(restaurant_id =>
+                    getDeliveryPriceForRestaurant(restaurant_id)
+                );
+
+                // Ждём, пока все запросы на получение стоимости доставки завершатся
+                const deliveryPrices = await Promise.all(restaurantDeliveryPromises);
+
+                // Находим максимальную стоимость доставки
+                maxDeliveryPrice = Math.max(...deliveryPrices);
+
+                // Добавляем максимальную стоимость доставки
+                if (maxDeliveryPrice > 0) {
+                    deliveryButton.style.display = 'inline-block';
+                    deliveryButton.textContent = `Стоимость доставки: ${maxDeliveryPrice}₽`;
+                } else {
+                    deliveryButton.style.display = 'none';
+                }
+
+                if (cartItems && cartItems.length > 0) {
+                    orderTimeButton.style.display = 'inline-block';
+                    deliveryButton.style.display = 'inline-block';
+                    orderPriceButton.style.display = 'inline-block';
+                    orderButton.style.display = 'inline-block';
+
+                    cartItems.forEach((item, index) => {
+                        const cartItem = document.createElement('div');
+                        cartItem.className = 'cart_dish';
+
+                        const itemImage = document.createElement('img');
+                        itemImage.src = `../../${item.logo_path}` || 'src/img/logo.jpg';
+                        itemImage.alt = '';
+
+                        const itemNameAndWeight = document.createElement('span');
+                        itemNameAndWeight.className = 'dish_name_and_weight';
+                        const totalItemPrice = calculateTotalItemPrice(item);
+                        let name = item.name;
+                        if (name.length > 15) {
+                            name = `${name.substring(0, 7)}...${name.substring(name.length - 7)}`;
+                        }
+                        itemNameAndWeight.innerHTML = `${name} <span>${item.weight}г</span> - ${totalItemPrice}₽`;
+
+                        totalOrderPrice += totalItemPrice;
+
+                        const dishIngInfo = document.createElement('div');
+                        dishIngInfo.className = 'dish_ing_info';
+
+                        const addButton = document.createElement('button');
+                        addButton.className = 'ingredient-button';
+                        addButton.textContent = '+';
+                        addButton.addEventListener('click', () => {
+                            updateItemQuantity(userId, index, 1);
+                        });
+
+                        const quantityButton = document.createElement('button');
+                        quantityButton.className = 'ingredient-button_';
+                        quantityButton.textContent = item.quantity || 1;
+
+                        const removeButton = document.createElement('button');
+                        removeButton.className = 'ingredient-button';
+                        removeButton.textContent = '-';
+                        removeButton.addEventListener('click', () => {
+                            updateItemQuantity(userId, index, -1);
+                        });
+
+                        const spanIng = document.createElement('div');
+                        spanIng.className = 'span_ing';
+                        if (item.paid_ingredients) {
+                            item.paid_ingredients.forEach(ingredient => {
+                                const ingredientSpan = document.createElement('span');
+                                ingredientSpan.className = 'span_ingredients';
+                                ingredientSpan.textContent = `${ingredient.name} ${ingredient.price}₽`;
+                                spanIng.appendChild(ingredientSpan);
+                                spanIng.appendChild(document.createElement('br'));
+                            });
+                        }
+
+                        dishIngInfo.appendChild(addButton);
+                        dishIngInfo.appendChild(quantityButton);
+                        dishIngInfo.appendChild(removeButton);
+                        dishIngInfo.appendChild(document.createElement('br'));
+                        dishIngInfo.appendChild(spanIng);
+
+                        cartItem.appendChild(itemImage);
+                        cartItem.appendChild(itemNameAndWeight);
+                        cartItem.appendChild(dishIngInfo);
+                        cartItemsContainer.appendChild(cartItem);
+                    });
+
+                    // Итоговая стоимость с учетом доставки
+                    const finalOrderPrice = totalOrderPrice + maxDeliveryPrice;
+                    orderPriceButton.textContent = `${finalOrderPrice}₽`;
+
+                } else {
+                    orderButton.style.display = 'none';
+                    orderTimeButton.style.display = 'none';
+                    orderPriceButton.style.display = 'none';
+                    deliveryButton.style.display = 'none'; // Скрываем кнопку доставки, если нет товаров
+                    const emptyMessage = document.createElement('h3');
+                    emptyMessage.textContent = 'Ваша корзина пуста.';
+                    cartItemsContainer.appendChild(emptyMessage);
+                }
+
+            } catch (error) {
+                console.error('Ошибка при загрузке корзины:', error);
+            }
+        }
+
+
+        function calculateTotalItemPrice(item) {
+            return parseFloat(item.price) * (item.quantity || 1);
+        }
+
+        async function updateItemQuantity(userId, index, change) {
+            try {
+                const response = await fetch(`https://poruchi-tg.ru:8000/users/${userId}/cart`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ index, change }),
+                });
+
+                if (response.ok) {
+                    loadCartItems();  // Загрузить обновленные данные корзины
+                    updateTotalPrice();  // Обновить итоговую сумму с доставкой
+                } else {
+                    console.error('Ошибка при обновлении количества товара в корзине');
+                }
+            } catch (error) {
+                console.error('Ошибка при обновлении количества товара в корзине:', error);
+            }
+        }
+
+
+        loadCartItems();
+    </script>
+</body>
+</html>
